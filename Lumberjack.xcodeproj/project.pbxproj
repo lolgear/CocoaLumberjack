@@ -495,6 +495,45 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		0A98CF72217DDF46002348F2 /* PublicBeta */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 435F03AA2174A39200A86B2D /* Module-Release.xcconfig */;
+			buildSettings = {
+			};
+			name = PublicBeta;
+		};
+		0A98CF73217DDF46002348F2 /* PublicBeta */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRIVATE_HEADERS_FOLDER_PATH = "$(BUILT_PRODUCTS_DIR)/private";
+				PRODUCT_BUNDLE_IDENTIFIER = com.deusty.cocoalumberjack;
+				PRODUCT_NAME = CocoaLumberjack;
+				PUBLIC_HEADERS_FOLDER_PATH = "$(BUILT_PRODUCTS_DIR)/include";
+			};
+			name = PublicBeta;
+		};
+		0A98CF74217DDF46002348F2 /* PublicBeta */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				FRAMEWORK_VERSION = A;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "Framework/Lumberjack/CocoaLumberjack-Prefix.pch";
+				INFOPLIST_FILE = "Framework/Lumberjack/CocoaLumberjack-Info.plist";
+				MODULEMAP_FILE = Framework/Lumberjack/CocoaLumberjack.modulemap;
+			};
+			name = PublicBeta;
+		};
+		0A98CF75217DDF46002348F2 /* PublicBeta */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				FRAMEWORK_VERSION = A;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				INFOPLIST_FILE = "Framework/Lumberjack/CocoaLumberjackSwift-Info.plist";
+			};
+			name = PublicBeta;
+		};
 		18F3BFE91A81E06E00692297 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -581,6 +620,7 @@
 			buildConfigurations = (
 				18F3BFE91A81E06E00692297 /* Debug */,
 				18F3BFEA1A81E06E00692297 /* Release */,
+				0A98CF73217DDF46002348F2 /* PublicBeta */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -590,6 +630,7 @@
 			buildConfigurations = (
 				19FF46071B8B4CF400B43179 /* Debug */,
 				19FF46081B8B4CF400B43179 /* Release */,
+				0A98CF74217DDF46002348F2 /* PublicBeta */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -599,6 +640,7 @@
 			buildConfigurations = (
 				19FF46191B8B4D1400B43179 /* Debug */,
 				19FF461A1B8B4D1400B43179 /* Release */,
+				0A98CF75217DDF46002348F2 /* PublicBeta */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -608,6 +650,7 @@
 			buildConfigurations = (
 				DCB3186414EB418E001CFBEE /* Debug */,
 				DCB3186514EB418E001CFBEE /* Release */,
+				0A98CF72217DDF46002348F2 /* PublicBeta */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
