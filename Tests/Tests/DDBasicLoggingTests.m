@@ -1,6 +1,6 @@
 // Software License Agreement (BSD License)
 //
-// Copyright (c) 2010-2018, Deusty, LLC
+// Copyright (c) 2010-2019, Deusty, LLC
 // All rights reserved.
 //
 // Redistribution and use of this software in source and binary forms,
@@ -17,59 +17,63 @@
 #import <CocoaLumberjack/CocoaLumberjack.h>
 #import "DDSMocking.h"
 
-const NSTimeInterval kAsyncExpectationTimeout = 3.0f;
+static const NSTimeInterval kAsyncExpectationTimeout = 3.0f;
 
 static DDLogLevel ddLogLevel = DDLogLevelVerbose;
 
-@interface DDBasicLoggingTests : XCTestCase
+static DDBasicMock<DDAbstractLogger *> *createAbstractLogger(void (^didLogBlock)(id)) {
+    __auto_type logger = [DDBasicMock<DDAbstractLogger *> decoratedInstance:[[DDAbstractLogger alloc] init]];
+    __auto_type argument = [DDBasicMockArgument alongsideWithBlock:didLogBlock];
+    [logger addArgument:argument forSelector:@selector(logMessage:) atIndex:2];
+    return logger;
+}
 
+@interface DDSingleLoggerLoggingTests : XCTestCase
 @property (nonatomic, strong) NSArray *logs;
 @property (nonatomic, strong) XCTestExpectation *expectation;
 @property (nonatomic, strong) DDAbstractLogger *logger;
-@property (nonatomic, assign) NSUInteger noOfMessagesLogged;
-
+@property (nonatomic, assign) NSUInteger numberMessagesLogged;
+@property (nonatomic) dispatch_queue_t serial;
 @end
 
-@implementation DDBasicLoggingTests
+@implementation DDSingleLoggerLoggingTests
 
-- (void)reactOnMessage:(id)object {
-    __auto_type message = (DDLogMessage *)object;
-    XCTAssertTrue([self.logs containsObject:message.message]);
-    self.noOfMessagesLogged++;
-    if (self.noOfMessagesLogged == [self.logs count]) {
-        [self.expectation fulfill];
-    }
-}
+- (void)setupLoggers {
+    __weak __auto_type weakSelf = self;
+    self.logger = (DDAbstractLogger *)createAbstractLogger(^(DDLogMessage *logMessage) {
+        dispatch_sync(self->_serial, ^{
+            __auto_type strongSelf = weakSelf;
 
-- (void)cleanup {
-    [DDLog removeAllLoggers];
-    [DDLog addLogger:[DDTTYLogger sharedInstance]];
+            XCTAssertTrue([logMessage isKindOfClass:[DDLogMessage class]]);
+            XCTAssertTrue([strongSelf.logs containsObject:logMessage.message]);
+            XCTAssertEqualObjects(logMessage.fileName, @"DDBasicLoggingTests");
+
+            strongSelf.numberMessagesLogged++;
+            if (strongSelf.numberMessagesLogged == [strongSelf.logs count]) {
+                [strongSelf.expectation fulfill];
+            }
+        });
+    });
+
     [DDLog addLogger:self.logger];
-    
-    ddLogLevel = DDLogLevelVerbose;
-    
-    self.logs = @[];
-    self.expectation = nil;
-    self.noOfMessagesLogged = 0;
 }
 
 - (void)setUp {
     [super setUp];
-    
-    if (self.logger == nil) {
-        __auto_type logger = [DDBasicMock<DDAbstractLogger *> decoratedInstance:[[DDAbstractLogger alloc] init]];
+    self.serial = dispatch_queue_create("serial", NULL);
+    self.logs = @[];
+    self.numberMessagesLogged = 0;
+    ddLogLevel = DDLogLevelVerbose;
+    [self setupLoggers];
+}
 
-        __weak typeof(self)weakSelf = self;
-        __auto_type argument = [DDBasicMockArgument alongsideWithBlock:^(id object) {
-            [weakSelf reactOnMessage:object];
-        }];
-        
-        [logger addArgument:argument forSelector:@selector(logMessage:) atIndex:2];
-        
-        self.logger = (DDAbstractLogger *)logger;
-    }
+- (void)tearDown {
+    [DDLog removeAllLoggers];
 
-    [self cleanup];
+    self.logger = nil;
+    self.expectation = nil;
+
+    [super tearDown];
 }
 
 - (void)testAll5DefaultLevelsAsync {
@@ -81,7 +85,8 @@ static DDLogLevel ddLogLevel = DDLogLevelVerbose;
     DDLogInfo   (@"Info");
     DDLogDebug  (@"Debug");
     DDLogVerbose(@"Verbose");
-    
+
+    [DDLog flushLog];
     [self waitForExpectationsWithTimeout:kAsyncExpectationTimeout handler:^(NSError *timeoutError) {
         XCTAssertNil(timeoutError);
     }];
@@ -99,13 +104,14 @@ static DDLogLevel ddLogLevel = DDLogLevelVerbose;
     DDLogInfo   (@"Info");
     DDLogDebug  (@"Debug");
     DDLogVerbose(@"Verbose");
-    
+
+    [DDLog flushLog];
     [self waitForExpectationsWithTimeout:kAsyncExpectationTimeout handler:^(NSError *timeoutError) {
         XCTAssertNil(timeoutError);
     }];
 }
 
-- (void)testX_ddLogLevel_async {
+- (void)testGlobalLogLevelAsync {
     self.expectation = [self expectationWithDescription:@"ddLogLevel"];
     self.logs = @[ @"Error", @"Warn", @"Info" ];
     
@@ -116,12 +122,86 @@ static DDLogLevel ddLogLevel = DDLogLevelVerbose;
     DDLogInfo   (@"Info");
     DDLogDebug  (@"Debug");
     DDLogVerbose(@"Verbose");
-    
+
+    [DDLog flushLog];
     [self waitForExpectationsWithTimeout:kAsyncExpectationTimeout handler:^(NSError *timeoutError) {
         XCTAssertNil(timeoutError);
     }];
     
     ddLogLevel = DDLogLevelVerbose;
+}
+
+@end
+
+static int const DDLoggerCount = 3;
+
+@interface DDMultipleLoggerLoggingTests : XCTestCase
+
+@property (nonatomic) NSArray *loggers;
+@property (nonatomic) NSArray *logs;
+
+@property (nonatomic) XCTestExpectation *expectation;
+
+@property (nonatomic) NSUInteger numberMessagesLogged;
+@property (nonatomic) dispatch_queue_t serial;
+
+@end
+
+@implementation DDMultipleLoggerLoggingTests
+
+- (void)setUp {
+    [super setUp];
+    self.serial = dispatch_queue_create("serial", NULL);
+    self.logs = @[];
+    self.numberMessagesLogged = 0;
+    ddLogLevel = DDLogLevelVerbose;
+    [self setupLoggers];
+}
+
+- (void)tearDown {
+    [DDLog removeAllLoggers];
+    self.loggers = nil;
+    self.expectation = nil;
+    [super tearDown];
+}
+
+- (void)setupLoggers {
+    NSMutableArray *loggers = [NSMutableArray arrayWithCapacity:DDLoggerCount];
+
+    for (NSUInteger i = 0; i < DDLoggerCount; i++) {
+        __weak __auto_type weakSelf = self;
+        __auto_type logger = (DDAbstractLogger *)createAbstractLogger(^(DDLogMessage *logMessage) {
+            dispatch_sync(self->_serial, ^{
+                __auto_type strongSelf = weakSelf;
+
+                XCTAssertTrue([logMessage isKindOfClass:[DDLogMessage class]]);
+                XCTAssertTrue([strongSelf.logs containsObject:logMessage.message]);
+                XCTAssertEqualObjects(logMessage.fileName, @"DDBasicLoggingTests");
+
+                strongSelf.numberMessagesLogged++;
+                if (strongSelf.numberMessagesLogged == [strongSelf.logs count]) {
+                    [strongSelf.expectation fulfill];
+                }
+            });
+        });
+
+        [loggers addObject:logger];
+        [DDLog addLogger:logger];
+    }
+
+    self.loggers = [loggers copy];
+}
+
+- (void)testAll5DefaultLevelsAsync {
+    self.expectation = [self expectationWithDescription:@"default log levels"];
+    self.logs = @[ @"Error" ];
+    
+    DDLogError(@"Error");
+
+    [DDLog flushLog];
+    [self waitForExpectationsWithTimeout:kAsyncExpectationTimeout handler:^(NSError *timeoutError) {
+        XCTAssertNil(timeoutError);
+    }];
 }
 
 @end

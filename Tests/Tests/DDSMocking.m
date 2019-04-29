@@ -1,6 +1,6 @@
 // Software License Agreement (BSD License)
 //
-// Copyright (c) 2010-2018, Deusty, LLC
+// Copyright (c) 2010-2019, Deusty, LLC
 // All rights reserved.
 //
 // Redistribution and use of this software in source and binary forms,
@@ -16,22 +16,25 @@
 #import "DDSMocking.h"
 
 @implementation DDSMocking
-
 @end
 
 @implementation DDBasicMockArgument
+
 - (instancetype)initWithBlock:(void(^)(id object))block {
     if (self = [super init]) {
         self.block = block;
     }
     return self;
 }
+
 + (instancetype)alongsideWithBlock:(void(^)(id object))block {
     return [[self alloc] initWithBlock:block];
 }
+
 - (id)copyWithZone:(NSZone *)zone {
     return [self.class alongsideWithBlock:self.block];
 }
+
 @end
 
 @implementation DDBasicMockArgumentPosition
@@ -58,7 +61,6 @@
     }
     
     __auto_type position = (DDBasicMockArgumentPosition *)object;
-    
     return [position.selector isEqualToString:self.selector] && [position.position isEqualToNumber:self.position];
 }
 
@@ -69,9 +71,11 @@
 - (NSString *)debugDescription {
     return [NSString stringWithFormat:@"%@ selector: %@ position: %@", [super debugDescription], self.selector, self.position];
 }
+
 - (NSString *)description {
     return [NSString stringWithFormat:@"%@ selector: %@ position: %@", [super description], self.selector, self.position];
 }
+
 @end
 
 @interface DDBasicMock ()
@@ -81,30 +85,35 @@
 @end
 
 @implementation DDBasicMock
+
 - (instancetype)initWithInstance:(id)object {
     self.object = object;
     self.positionsAndArguments = [NSDictionary new];
     return self;
 }
+
 + (instancetype)decoratedInstance:(id)object {
     return [[self alloc] initWithInstance:object];
 }
+
 - (instancetype)enableStub {
     self.stubEnabled = YES;
     return self;
 }
+
 - (instancetype)disableStub {
     self.stubEnabled = NO;
     return self;
 }
+
 - (void)addArgument:(DDBasicMockArgument *)argument forSelector:(SEL)selector atIndex:(NSInteger)index {
-    __auto_type dictionary = (NSMutableDictionary *)[self.positionsAndArguments mutableCopy];
-    __auto_type thePosition = [[DDBasicMockArgumentPosition alloc] initWithSelector:NSStringFromSelector(selector) position:@(index)];
+    NSMutableDictionary *dictionary = [self.positionsAndArguments mutableCopy];
+    __auto_type thePosition = [[DDBasicMockArgumentPosition alloc] initWithSelector:NSStringFromSelector(selector)
+                                                                           position:@(index)];
     dictionary[thePosition] = [argument copy];
-    __auto_type theArgument = argument;
     self.positionsAndArguments = dictionary;
-    NSLog(@"%s %@ here we have: thePosition: %@ and theArgument: %@. All Handlers: %@", __PRETTY_FUNCTION__, self, thePosition, theArgument, self.positionsAndArguments);
 }
+
 - (void)forwardInvocation:(NSInvocation *)invocation {
     __auto_type numberOfArguments = [[invocation methodSignature] numberOfArguments];
     BOOL found = NO;
@@ -113,21 +122,24 @@
         [invocation getArgument:&abc atIndex:i];
         id argument = (__bridge id)(abc);
         __auto_type thePosition = [[DDBasicMockArgumentPosition alloc] initWithSelector:NSStringFromSelector(invocation.selector) position:@(i)];
-        __auto_type theArgument = self.positionsAndArguments[thePosition];
-        NSLog(@"%@ here we have: thePosition: %@ and theArgument: %@. All Handlers: %@", self, thePosition, theArgument, self.positionsAndArguments);
-        if (theArgument.block) {
+        __auto_type argListener = self.positionsAndArguments[thePosition];
+
+        if (argListener) {
             found = YES;
-            theArgument.block(argument);
+            argListener.block(argument);
         }
     }
     if (!found) {
         [invocation invokeWithTarget:self.object];
     }
 }
+
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)sel {
     return [self.object methodSignatureForSelector:sel];
 }
+
 - (BOOL)respondsToSelector:(SEL)aSelector {
     return [self.object respondsToSelector:aSelector];
 }
+
 @end

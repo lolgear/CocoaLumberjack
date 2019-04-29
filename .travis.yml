@@ -1,6 +1,10 @@
 
 language: objective-c
-osx_image: xcode10
+osx_image: xcode10.2
+
+branches:
+    only:
+        - master
 
 env:
   global:
@@ -11,8 +15,8 @@ env:
 before_install:
     - env
     - locale
-    - gem install cocoapods --pre --no-rdoc --no-ri --no-document --quiet
-    - gem install xcpretty --no-rdoc --no-ri --no-document --quiet
+    - gem install cocoapods --prerelease --no-document --quiet
+    - gem install xcpretty --no-document --quiet
     - pod --version
     - xcpretty --version
     - xcodebuild -version
@@ -47,11 +51,12 @@ script:
     - xcodebuild clean build -project Integration/Integration.xcodeproj -scheme 'macOSSwiftIntegration' -configuration Release -sdk macosx | xcpretty -c
     - xcodebuild clean build -project Integration/Integration.xcodeproj -scheme 'iOSFrameworkIntegration' -sdk iphonesimulator PLATFORM_NAME=iphonesimulator -configuration Release | xcpretty -c
     - xcodebuild clean build -project Integration/Integration.xcodeproj -scheme 'tvOSSwiftIntegration' -destination 'platform=tvOS Simulator,name=Apple TV 4K' -configuration Release -sdk appletvsimulator | xcpretty -c
-    - xcodebuild clean build -project Integration/Integration.xcodeproj -scheme 'watchOSSwiftIntegration' -configuration Release -sdk watchsimulator -destination 'platform=iOS Simulator,name=iPhone XS Max,OS=12.0' | xcpretty -c
+    - xcodebuild clean build -project Integration/Integration.xcodeproj -scheme 'watchOSSwiftIntegration' -configuration Release -sdk watchsimulator -destination 'platform=iOS Simulator,name=iPhone XS Max,OS=12.2' | xcpretty -c
 
     - echo "Run the tests"
-    - xcodebuild test -project Tests/Tests.xcodeproj -scheme 'iOS Tests' -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 7,OS=latest' GCC_INSTRUMENT_PROGRAM_FLOW_ARCS=YES GCC_GENERATE_TEST_COVERAGE_FILES=YES | xcpretty -c
-    - xcodebuild test -project Tests/Tests.xcodeproj -scheme 'OS X Tests' -sdk macosx GCC_INSTRUMENT_PROGRAM_FLOW_ARCS=YES GCC_GENERATE_TEST_COVERAGE_FILES=YES | xcpretty -c
+    - xcodebuild test -skip-testing:'iOS Tests/DDFileLoggerPerformanceTests' -project Tests/Tests.xcodeproj -scheme 'iOS Tests' -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 6,OS=9.3' GCC_INSTRUMENT_PROGRAM_FLOW_ARCS=YES GCC_GENERATE_TEST_COVERAGE_FILES=YES | xcpretty -c
+    - xcodebuild test -skip-testing:'iOS Tests/DDFileLoggerPerformanceTests' -project Tests/Tests.xcodeproj -scheme 'iOS Tests' -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 7,OS=latest' GCC_INSTRUMENT_PROGRAM_FLOW_ARCS=YES GCC_GENERATE_TEST_COVERAGE_FILES=YES | xcpretty -c
+    - xcodebuild test -skip-testing:'OS X Tests/DDFileLoggerPerformanceTests' -project Tests/Tests.xcodeproj -scheme 'OS X Tests' -sdk macosx GCC_INSTRUMENT_PROGRAM_FLOW_ARCS=YES GCC_GENERATE_TEST_COVERAGE_FILES=YES | xcpretty -c
 
     - echo "Building the Demos"
     - xcodebuild clean build -workspace Demos/Demos.xcworkspace -scheme 'BenchmarkIPhone' -configuration Release -sdk iphonesimulator | xcpretty -c
@@ -77,7 +82,7 @@ script:
     - xcodebuild clean build -workspace Demos/Demos.xcworkspace -scheme 'TextXcodeColors (Mobile)' -configuration Release -sdk iphonesimulator | xcpretty -c
     - xcodebuild clean build -workspace Demos/Demos.xcworkspace -scheme 'UniversalApp' -configuration Release -sdk iphonesimulator | xcpretty -c
     - xcodebuild clean build -workspace Demos/Demos.xcworkspace -scheme 'WebServerIPhone' -configuration Release -sdk iphonesimulator | xcpretty -c
-    
+
     - bundle exec danger
 
 after_success:

@@ -1,6 +1,6 @@
 // Software License Agreement (BSD License)
 //
-// Copyright (c) 2010-2018, Deusty, LLC
+// Copyright (c) 2010-2019, Deusty, LLC
 // All rights reserved.
 //
 // Redistribution and use of this software in source and binary forms,
@@ -31,7 +31,11 @@ static const DDLogLevel ddLogLevel = DDLogLevelVerbose;
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
     
-    [DDLog addLogger:[DDOSLogger sharedInstance]];
+    if (@available(macOS 10.12, iOS 10.0, watchOS 3.0, tvOS 10.0, *)) {
+        [DDLog addLogger:[DDOSLogger sharedInstance]];
+    } else {
+        [DDLog addLogger:[DDTTYLogger sharedInstance]];
+    }
     
     DDLogVerbose(@"Verbose");
     DDLogInfo(@"Info");
@@ -39,7 +43,11 @@ static const DDLogLevel ddLogLevel = DDLogLevelVerbose;
     DDLogError(@"Error");
     
     DDLog *aDDLogInstance = [DDLog new];
-    [aDDLogInstance addLogger:[DDOSLogger sharedInstance]];
+    if (@available(macOS 10.12, iOS 10.0, watchOS 3.0, tvOS 10.0, *)) {
+        [aDDLogInstance addLogger:[DDOSLogger sharedInstance]];
+    } else {
+        [aDDLogInstance addLogger:[DDTTYLogger sharedInstance]];
+    }
     
     DDLogVerboseToDDLog(aDDLogInstance, @"Verbose from aDDLogInstance");
     DDLogInfoToDDLog(aDDLogInstance, @"Info from aDDLogInstance");
