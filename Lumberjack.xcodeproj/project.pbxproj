@@ -546,7 +546,6 @@
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "Framework/Lumberjack/CocoaLumberjack-Prefix.pch";
 				INFOPLIST_FILE = "Framework/Lumberjack/CocoaLumberjack-Info.plist";
-				MODULEMAP_FILE = Framework/Lumberjack/CocoaLumberjack.modulemap;
 			};
 			name = PublicBeta;
 		};
