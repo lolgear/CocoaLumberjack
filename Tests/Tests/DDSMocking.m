@@ -37,6 +37,26 @@
 
 @end
 
+@implementation DDBasicMockResult
+
+- (instancetype)initWithBlock:(void *(^)(NSInvocation *invocation))block {
+    if (self = [super init]) {
+        self.result = block;
+    }
+    return self;
+}
+
++ (instancetype)mutatedResult:(void *(^)(NSInvocation *))result {
+    return [[self alloc] initWithBlock:result];
+}
+
+- (id)copyWithZone:(NSZone *)zone {
+    return [self.class mutatedResult:self.result];
+}
+
+@end
+
+
 @implementation DDBasicMockArgumentPosition
 
 - (instancetype)initWithSelector:(NSString *)selector position:(NSNumber *)position {
@@ -82,6 +102,7 @@
 @property (strong, nonatomic, readwrite) id object;
 @property (assign, nonatomic, readwrite) BOOL stubEnabled;
 @property (copy, nonatomic, readwrite) NSDictionary <DDBasicMockArgumentPosition *, DDBasicMockArgument *>*positionsAndArguments; // extend later to NSArray if needed.
+@property (copy, nonatomic, readwrite) NSDictionary <DDBasicMockArgumentPosition *, DDBasicMockResult *>*positionsAndResults;
 @end
 
 @implementation DDBasicMock
@@ -89,6 +110,7 @@
 - (instancetype)initWithInstance:(id)object {
     self.object = object;
     self.positionsAndArguments = [NSDictionary new];
+    self.positionsAndResults = [NSDictionary new];
     return self;
 }
 
@@ -107,29 +129,46 @@
 }
 
 - (void)addArgument:(DDBasicMockArgument *)argument forSelector:(SEL)selector atIndex:(NSInteger)index {
-    NSMutableDictionary *dictionary = [self.positionsAndArguments mutableCopy];
-    __auto_type thePosition = [[DDBasicMockArgumentPosition alloc] initWithSelector:NSStringFromSelector(selector)
-                                                                           position:@(index)];
+    __auto_type dictionary = [NSMutableDictionary dictionaryWithDictionary:self.positionsAndArguments];
+    __auto_type thePosition = [[DDBasicMockArgumentPosition alloc] initWithSelector:NSStringFromSelector(selector) position:@(index)];
     dictionary[thePosition] = [argument copy];
-    self.positionsAndArguments = dictionary;
+    self.positionsAndArguments = [dictionary copy];
+}
+
+- (void)addResult:(DDBasicMockResult *)result forSelector:(SEL)selector {
+    __auto_type dictionary = [NSMutableDictionary dictionaryWithDictionary:self.positionsAndResults];
+    __auto_type thePosition = [[DDBasicMockArgumentPosition alloc] initWithSelector:NSStringFromSelector(selector) position:@(DDBasicMockArgumentPositionType__ReturnValue)];
+    dictionary[thePosition] = [result copy];
+    self.positionsAndResults = [dictionary copy];
 }
 
 - (void)forwardInvocation:(NSInvocation *)invocation {
     __auto_type numberOfArguments = [[invocation methodSignature] numberOfArguments];
-    BOOL found = NO;
     for (NSUInteger i = 2; i < numberOfArguments; ++i) {
-        void *abc = nil;
-        [invocation getArgument:&abc atIndex:i];
-        id argument = (__bridge id)(abc);
         __auto_type thePosition = [[DDBasicMockArgumentPosition alloc] initWithSelector:NSStringFromSelector(invocation.selector) position:@(i)];
         __auto_type argListener = self.positionsAndArguments[thePosition];
 
-        if (argListener) {
-            found = YES;
+        if (argListener != nil) {
+            void *abc = nil;
+            [invocation getArgument:&abc atIndex:i];
+            id argument = (__bridge id)(abc);
             argListener.block(argument);
         }
     }
-    if (!found) {
+    
+    BOOL hasResult = NO;
+    {
+        __auto_type position = [[DDBasicMockArgumentPosition alloc] initWithSelector:NSStringFromSelector(invocation.selector) position:@(DDBasicMockArgumentPositionType__ReturnValue)];
+        __auto_type psar = [self.positionsAndResults copy];
+        NSLog(@"->>>> %@", NSStringFromSelector(invocation.selector));
+        __auto_type result = self.positionsAndResults[position];
+        if (result.result) {
+            __auto_type returnValue = result.result(invocation);
+            hasResult = YES;
+            [invocation setReturnValue:(void *)returnValue];
+        }
+    }
+    if (!hasResult) {
         [invocation invokeWithTarget:self.object];
     }
 }
@@ -142,4 +181,37 @@
     return [self.object respondsToSelector:aSelector];
 }
 
+@end
+
+@interface DDTweetProxy ()
+@property (strong, nonatomic, readwrite) NSObject *instance;
+@end
+
+@implementation DDTweetProxy
+
+- (instancetype)initWithInstance:(NSObject *)instance {
+    self.instance = instance;
+    return self;
+}
++ (instancetype)decoratedInstance:(NSObject *)instance {
+    return [[self alloc] initWithInstance:instance];
+}
+
+
+- (NSMethodSignature *)methodSignatureForSelector:(SEL)sel {
+    return [self.instance methodSignatureForSelector:sel];
+}
+
+- (BOOL)respondsToSelector:(SEL)aSelector {
+    return YES;
+}
+
+- (void)forwardInvocation:(NSInvocation *)invocation {
+    if (![self.instance respondsToSelector:invocation.selector]) {
+        NSLog(@"Tweet! %@", NSStringFromSelector(invocation.selector));
+    }
+    else {
+        [invocation invokeWithTarget:self.instance];
+    }
+}
 @end

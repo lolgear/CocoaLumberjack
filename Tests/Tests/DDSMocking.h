@@ -22,7 +22,14 @@ NS_ASSUME_NONNULL_BEGIN
 
 NS_ASSUME_NONNULL_END
 
-@interface DDBasicMockArgument: NSObject
+typedef NS_ENUM(NSInteger, DDBasicMockArgumentPositionType) {
+    DDBasicMockArgumentPositionType__ReturnValue = 0,
+    DDBasicMockArgumentPositionType__Self = 0,
+    DDBasicMockArgumentPositionType__Cmd = 1,
+    DDBasicMockArgumentPositionType__FirstArgument = 2,
+};
+
+@interface DDBasicMockArgument: NSObject <NSCopying>
 @property (copy, nonatomic, readwrite) void(^block)(id object);
 + (instancetype)alongsideWithBlock:(void(^)(id object))block;
 @end
@@ -33,9 +40,19 @@ NS_ASSUME_NONNULL_END
 - (instancetype)initWithSelector:(NSString *)selector position:(NSNumber *)position;
 @end
 
+@interface DDBasicMockResult: NSObject <NSCopying>
+@property (copy, nonatomic, readwrite) void *(^result)(NSInvocation *invocation);
++ (instancetype)mutatedResult:(void *(^)(NSInvocation *invocation))result;
+@end
+
 @interface DDBasicMock<T>: NSProxy
 + (instancetype)decoratedInstance:(T)object;
 - (instancetype)enableStub;
 - (instancetype)disableStub;
 - (void)addArgument:(DDBasicMockArgument *)argument forSelector:(SEL)selector atIndex:(NSInteger)index;
+- (void)addResult:(DDBasicMockResult *)result forSelector:(SEL)selector;
+@end
+
+@interface DDTweetProxy<T : NSObject*> : NSProxy
++ (instancetype)decoratedInstance:(T)instance;
 @end
