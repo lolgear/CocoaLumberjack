@@ -17,6 +17,7 @@
 #import <CocoaLumberjack/CocoaLumberjack.h>
 
 #import "DDSampleFileManager.h"
+#import "DDSMocking.h"
 
 static const DDLogLevel ddLogLevel = DDLogLevelAll;
 
@@ -29,9 +30,41 @@ static const DDLogLevel ddLogLevel = DDLogLevelAll;
 
 @implementation DDFileLoggerTests
 
+- (DDLogFileManagerDefault *)createFileManager {
+    __auto_type manager = [[DDSampleFileManager alloc] initWithLogFileHeader:@"header"];
+    __auto_type tweet = (DDLogFileManagerDefault *)[DDTweetProxy<DDLogFileManagerDefault *> decoratedInstance:manager];
+    __auto_type mocking = [DDBasicMock<DDLogFileManagerDefault *> decoratedInstance:tweet];
+
+    
+    __auto_type didArchiveLogFile = [DDBasicMockArgument alongsideWithBlock:^(NSString *object) {
+        NSLog(@"Object! %@", object);
+    }];
+    
+    [mocking addArgument:didArchiveLogFile forSelector:@selector(didArchiveLogFile:) atIndex:2];
+    
+    return (DDLogFileManagerDefault *)mocking;
+}
+
+- (DDFileLogger *)createFileLogger {
+    __auto_type theLogger = [[DDFileLogger alloc] initWithLogFileManager:[self createFileManager]];
+    __auto_type mocking = [DDBasicMock<DDFileLogger *> decoratedInstance:theLogger];
+    
+    __auto_type lt_shouldUseLogFile = [DDBasicMockResult mutatedResult:^void *(NSInvocation *invocation) {
+        return (void *)YES;
+    }];
+    __auto_type shouldArchive = [DDBasicMockResult mutatedResult:^void *(NSInvocation *invocation) {
+        return (void *)YES;
+    }];
+
+    [mocking addResult:lt_shouldUseLogFile forSelector:@selector(lt_shouldUseLogFile:isResuming:)];
+    [mocking addResult:shouldArchive forSelector:@selector(shouldArchiveRecentLogFileInfo:)];
+    
+    return (DDFileLogger *)mocking;
+}
+
 - (void)setUp {
     [super setUp];
-    logger = [[DDFileLogger alloc] initWithLogFileManager:[[DDSampleFileManager alloc] initWithLogFileHeader:@"header"]];
+    logger = [self createFileLogger];
     logsDirectory = logger.logFileManager.logsDirectory;
 }
 
@@ -63,6 +96,12 @@ static const DDLogLevel ddLogLevel = DDLogLevelAll;
     
     logger = nil;
     logsDirectory = nil;
+}
+
+- (void)testDidArchive {
+    [DDLog addLogger:logger];
+    DDLogError(@"Some log in the old file");
+    XCTAssert(@(1) != nil);
 }
 
 - (void)testExplicitLogFileRolling {
